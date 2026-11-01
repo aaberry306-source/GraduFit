@@ -68,3 +68,20 @@ Email and Google setup can proceed before paid Apple developer access is availab
 - Backend linking policy must be reviewed/tested before enabling cross-provider linking. The app does not call account-link APIs or merge profiles by matching email.
 
 **Account Setup is intentionally still incomplete after verified sign-in.** Firestore profile resolution, versioned legal consent, server-confirmed completion, secure explicit linking, account deletion, and their acceptance tests remain subsequent implementation checkpoints. No future education/plan module is implemented. Do not distribute this development milestone as a completed account system.
+
+## Troubleshooting: app x86_64, packages arm64
+
+A Simulator build log showing `Planning Swift module GraduFit (x86_64)` and package modules named `arm64-apple-ios-simulator.swiftmodule` reports mismatched architectures. It does not establish missing Firebase configuration or an incompatible Swift language version.
+
+The project now explicitly uses `ARCHS = $(ARCHS_STANDARD)`, Debug `ONLY_ACTIVE_ARCH = YES`, and Release `ONLY_ACTIVE_ARCH = NO` at project level. This keeps ordinary Debug builds on the selected destination's active architecture without hardcoding arm64 or excluding supported architectures. Verify on Xcode/macOS; Linux cannot evaluate Xcode's effective settings or build the Simulator app.
+
+To apply the equivalent change to an existing downloaded project while retaining the local plist/provider settings:
+
+1. Click the blue GraduFit project icon, select GraduFit under **PROJECT**, and open **Build Settings**.
+2. Choose **All**. Search for **Build Active Architecture Only**; expand it and set **Debug = Yes**, keeping **Release = No**.
+3. Search for **Architectures**; use **Standard Architectures**. Do not manually force x86_64 or arm64, and do not add architecture exclusions.
+4. Select **GraduFit under TARGETS**, use **Levels**, and check that these values are inherited. If there is a conflicting target override, use Standard Architectures and Debug Build Active Architecture Only = Yes there as well. Keep unrelated settings intact.
+5. Select the normal named iPhone Simulator destination, rather than a Rosetta destination if one is offered.
+6. Product → Clean Build Folder, then Run. The Debug planning line should match the selected Simulator/package architecture.
+
+The user's expanded log established the mismatch; the new configuration still needs a successful Mac rebuild to confirm resolution. If it persists, inspect effective target Architectures, Excluded Architectures and active destination before changing dependencies again.
