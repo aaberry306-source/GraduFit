@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Milestone 1: visual shell only. No local action can authenticate or complete setup.
+/// No local action can authenticate or complete setup without the live backend.
 struct OnboardingRootView: View {
     @State private var isAccountExpanded = false
+    @State private var accountForm = EmailAccountForm()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .title) private var minimumHeaderHeight: CGFloat = 240
 
@@ -36,12 +37,7 @@ struct OnboardingRootView: View {
                                 isComplete: progress.accountSetupComplete, isAvailable: true,
                                 accessibilityID: "onboarding.account", action: toggleAccount
                             ) {
-                                // Replaced by the email/provider form after this screen's review.
-                                Text("Account sign-in is not available in this development build.")
-                                    .font(.footnote)
-                                    .foregroundStyle(GraduFitTheme.secondaryText)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .accessibilityIdentifier("onboarding.developmentNotice")
+                                EmailAccountFormView(form: $accountForm)
                             }
 
                             OnboardingStepCard(
@@ -78,7 +74,15 @@ struct OnboardingRootView: View {
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
             }
-            .background(Color.white)
+            .background(alignment: .top) {
+                ZStack(alignment: .top) {
+                    Color.white
+                    Color(red: 0.61, green: 0.79, blue: 0.94)
+                        .frame(height: 100)
+                        .ignoresSafeArea(edges: .top)
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
             .scrollIndicators(.hidden)
         }
         .preferredColorScheme(.light)

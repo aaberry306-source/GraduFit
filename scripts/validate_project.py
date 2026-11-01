@@ -2,6 +2,7 @@
 """Offline project integrity checks. Does not compile or validate SwiftUI."""
 import json
 import re
+import struct
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -24,5 +25,13 @@ for reference in scheme.findall(".//BuildableReference"):
 assert len(scheme.findall(".//TestableReference")) == 2
 for asset in (root / "GraduFit/Resources").rglob("*.json"):
     json.loads(asset.read_text())
+icon = root / "GraduFit/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+data = icon.read_bytes()
+assert data[:8] == b"\x89PNG\r\n\x1a\n", "Icon must be PNG"
+width, height, depth, color_type = struct.unpack(">IIBB", data[16:26])
+assert (width, height) == (1024, 1024), "Icon must be 1024 square"
+assert color_type in (0, 2), "Icon must be opaque grayscale or RGB"
+assert 'ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon"' in project
 print(f"PASS: {len(sources)} source references, project object links, shared scheme, asset JSON")
+print("PASS: AppIcon build setting and opaque 1024x1024 PNG")
 print("NOT RUN: Swift compilation, XCTest, Simulator, visual comparison, provider authentication")

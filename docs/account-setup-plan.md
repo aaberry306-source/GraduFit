@@ -2,8 +2,8 @@
 
 Approved direction: SwiftUI, iOS 17+, Firebase Authentication + Firestore, native AuthenticationServices and official Google Sign-In, explicit secure account linking, required email ownership verification for manual registration, server-authoritative agreement and completion. Only Account Setup is in scope.
 
-1. **Current:** project, domain routing model/tests, welcome visual shell, UI-test screenshot capture. Await macOS build/run/visual review.
-2. Email registration/sign-in/recovery UI and coordinator, tested against explicitly injected development services. No development service may report production readiness.
+1. Project, domain routing model/tests, welcome visual shell. Product owner built/ran the shell and supplied Simulator screenshots; unit/UI test execution remains unreported.
+2. **Current:** email registration/sign-in/recovery form, local validation tests, provisional app icon, and screenshot-based welcome adjustments. Valid submissions explicitly report missing service setup; no simulated identity is created. Await macOS build/run/visual review of this increment. Live coordinator and loading/retry tests follow with backend integration.
 3. Real Firebase email authentication, verification, stable profile resolution, backend rules/integration tests.
 4. Native Apple/Google integration, cancellation, restoration, provider collision/linking and revocation handling.
 5. GraduFit agreement sheet, legal links, versioning, authenticated server operation recording consent and completion consistently; recoverable failures and relaunch tests.

@@ -42,6 +42,8 @@ struct OnboardingStepCard<Content: View>: View {
                 }
                 .padding(14)
                 .contentShape(Rectangle())
+                // Keep the reference colors; the enclosing control remains disabled.
+                .environment(\.isEnabled, true)
             }
             .buttonStyle(.plain)
             .disabled(!isAvailable)

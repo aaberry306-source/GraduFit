@@ -1,6 +1,6 @@
 # GraduFit
 
-Native SwiftUI application combining academic studying and exercise. Development is incremental; this commit-sized milestone contains **only the welcome/onboarding shell**, not working authentication.
+Native SwiftUI application combining academic studying and exercise. Current milestone: **welcome interface, account-entry form, and app icon**. Live authentication is not connected yet.
 
 ## Open and run
 
@@ -26,7 +26,10 @@ swift test
 ## Current behavior
 
 - Landscape branding, welcome text, blue Account Setup, green Educational Level, and peach User Plan cards.
-- Account Setup expands/collapses to an explicit development notice. There are no simulated login buttons or successful authentication results.
+- Account Setup expands into Create Account / Sign In with nickname, email, secure password input, inline errors, and password-reset request mode.
+- Local validation checks required fields and basic email structure. Password strength and email ownership must be enforced by the real backend when integrated; this form does not claim a password satisfies a configured policy.
+- A valid submission explains that authentication setup is required; no account or reset email is fabricated. Provider controls are disabled until native SDK/backend integration is configured.
+- A generated provisional GraduFit icon is connected through the AppIcon asset catalog. Original landscape/logo artwork is still needed for exact visual fidelity.
 - Continue remains disabled. Future modules are visible, disabled placeholders with accessibility explanations.
 - Scrollable layout, Dynamic Type, VoiceOver labels, and Reduce Motion handling.
 - There is no session/profile persistence yet. The launch state is deliberately incomplete.
@@ -43,4 +46,4 @@ See `docs/account-setup-plan.md`. Firebase, Apple, and Google authentication are
 
 ## Validation status
 
-This environment runs Linux without Swift/Xcode. Offline project integrity checks can run here. Swift compilation, XCTest execution, Simulator launch, screenshot comparison, and device authentication remain unverified until a macOS runner is available. No App Store readiness is claimed.
+This environment runs Linux without Swift/Xcode. Offline project integrity checks pass. The product owner successfully built/ran the previous welcome-shell commit in Simulator and supplied screenshots; test execution was not reported. The current account-form/icon changes still require compilation, XCTest execution, Simulator launch, and screenshot comparison on macOS. No App Store readiness is claimed.

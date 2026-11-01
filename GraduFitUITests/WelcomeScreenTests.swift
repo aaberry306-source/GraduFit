@@ -25,13 +25,13 @@ final class WelcomeScreenTests: XCTestCase {
         scrollTo(account)
         XCTAssertEqual(account.value as? String, "Collapsed, incomplete")
         account.tap()
-        XCTAssertTrue(app.staticTexts["onboarding.developmentNotice"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textFields["account.nickname"].waitForExistence(timeout: 3))
         XCTAssertEqual(account.value as? String, "Expanded, incomplete")
-        attachScreenshot("Welcome-expanded-development-shell")
+        attachScreenshot("Account-form-expanded")
         scrollTo(account)
         account.tap()
         XCTAssertEqual(account.value as? String, "Collapsed, incomplete")
-        XCTAssertFalse(app.staticTexts["onboarding.developmentNotice"].exists)
+        XCTAssertFalse(app.textFields["account.nickname"].exists)
         scrollTo(app.buttons["onboarding.continue"])
         XCTAssertFalse(app.buttons["onboarding.continue"].isEnabled)
     }
@@ -49,6 +49,19 @@ final class WelcomeScreenTests: XCTestCase {
         XCTAssertTrue(button.exists)
         XCTAssertFalse(button.isEnabled)
         attachScreenshot("Welcome-accessibility-XXXL")
+    }
+
+    func testInvalidFormStaysIncomplete() {
+        let account = app.buttons["onboarding.account"]
+        scrollTo(account)
+        account.tap()
+        let submit = app.buttons["account.submit"]
+        scrollTo(submit)
+        submit.tap()
+        XCTAssertTrue(app.textFields["account.nickname"].exists)
+        XCTAssertFalse(app.alerts["Authentication setup required"].exists)
+        XCTAssertEqual(account.value as? String, "Expanded, incomplete")
+        attachScreenshot("Account-form-validation")
     }
 
     private func scrollTo(_ element: XCUIElement) {
