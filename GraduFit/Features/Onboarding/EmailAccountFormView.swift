@@ -1,12 +1,16 @@
 import AuthenticationServices
 import SwiftUI
+import GoogleSignInSwift
 
-/// This increment provides the real form and local validation. It never fabricates
-/// a session: the live authentication adapter must be configured in the next increment.
+/// Email and native provider entry points. Completion remains backend/consent-owned.
 struct EmailAccountFormView: View {
     @Binding var form: EmailAccountForm
     @State private var hasSubmitted = false
-    @State private var showServiceNotice = false
+    @ObservedObject var authentication: AuthenticationCoordinator
+    let providerClient: FirebaseAuthenticationClient
+    @State private var appleNonce: AppleNonce?
+    @State private var isAppleAuthorizing = false
+    @State private var providerError: String?
     @FocusState private var focusedField: AccountField?
 
     private var title: String {
@@ -19,6 +23,9 @@ struct EmailAccountFormView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            if let account = authentication.account {
+                authenticatedStatus(account)
+            } else {
             Picker("Account action", selection: modeBinding) {
                 Text("Create Account").tag(EmailAccountMode.createAccount)
                 Text("Sign In").tag(EmailAccountMode.signIn)
@@ -73,7 +80,7 @@ struct EmailAccountFormView: View {
                 }
             }
 
-            PrimaryButton(title: title, isEnabled: true, action: submit)
+            PrimaryButton(title: title, isEnabled: !authentication.isBusy, action: submit)
                 .accessibilityIdentifier("account.submit")
 
             Button(form.mode == .resetPassword ? "Back to Sign In" : "Forgot password?") {
@@ -93,37 +100,109 @@ struct EmailAccountFormView: View {
                 .foregroundStyle(GraduFitTheme.secondaryText.opacity(0.6))
                 .accessibilityHidden(true)
 
-                SignInWithAppleButton(.continue, onRequest: { _ in }, onCompletion: { _ in })
+                SignInWithAppleButton(.continue, onRequest: { request in
+                    do {
+                        let nonce = try AppleNonce()
+                        appleNonce = nonce
+                        request.requestedScopes = [.fullName, .email]
+                        request.nonce = nonce.sha256
+                        isAppleAuthorizing = true
+                    } catch { providerError = "Secure Apple sign-in could not start. Try again." }
+                }, onCompletion: finishApple)
                     .signInWithAppleButtonStyle(.black)
                     .frame(height: 50)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .disabled(true)
-                    .accessibilityHint("Unavailable until authentication is configured")
+                    .disabled(!authentication.isConfigured || authentication.isBusy)
 
-                // Official Google SDK button will replace this disabled layout slot
-                // when its OAuth client and verified backend exchange are configured.
-                Button("Continue with Google", action: {})
-                    .font(.headline)
-                    .foregroundStyle(GraduFitTheme.ink)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.gray.opacity(0.4)))
-                    .disabled(true)
-                    .accessibilityHint("Unavailable until authentication is configured")
+                GoogleSignInButton {
+                    Task {
+                        await authentication.authenticateProvider {
+                            try await providerClient.signInWithGoogle()
+                        }
+                    }
+                }
+                .frame(minHeight: 50)
+                .disabled(!authentication.isConfigured || authentication.isBusy)
             }
+            } // Signed-out form.
 
-            Text("Development build: email, Apple, and Google authentication are not connected yet. No account will be created. Agreement acceptance follows verified sign-in.")
-                .font(.footnote)
-                .foregroundStyle(GraduFitTheme.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            if authentication.isBusy {
+                ProgressView("Contacting authentication…")
+                    .accessibilityIdentifier("account.loading")
+            }
+            if let message = authentication.message {
+                Label(message, systemImage: authentication.hasError ? "exclamationmark.circle" : "info.circle")
+                    .font(.footnote)
+                    .foregroundStyle(authentication.hasError ? Color.red : GraduFitTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("account.status")
+            }
+            if !authentication.isConfigured {
+                Text("Connect your Firebase iOS app to enable authentication. See docs/firebase-setup.md in the project. No account has been created.")
+                    .font(.footnote)
+                    .foregroundStyle(GraduFitTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .disabled(authentication.isBusy || isAppleAuthorizing)
         .foregroundStyle(GraduFitTheme.ink)
-        .alert("Authentication setup required", isPresented: $showServiceNotice) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Firebase and provider configuration have not been connected in this build. Your information has not been sent, no account has been created, and no reset email has been sent.")
-        }
+        .alert("Apple sign-in", isPresented: Binding(
+            get: { providerError != nil }, set: { if !$0 { providerError = nil } }
+        )) { Button("OK", role: .cancel) { providerError = nil } }
+        message: { Text(providerError ?? "") }
         .onDisappear { form.password = "" }
+    }
+
+    @ViewBuilder
+    private func authenticatedStatus(_ account: AuthenticatedAccount) -> some View {
+        Text(account.requiresEmailVerification ? "Verify your email" : "Signed in")
+            .font(.headline)
+            .accessibilityAddTraits(.isHeader)
+        if let email = account.email {
+            Text(email).font(.subheadline).textSelection(.enabled)
+        }
+        if account.displayName == nil {
+            Text("Your nickname still needs to be saved during profile setup.")
+                .font(.footnote)
+        }
+        if account.requiresEmailVerification {
+            Text("Check your inbox for a verification link. Account Setup remains incomplete until verification and agreement acceptance are confirmed.")
+                .font(.footnote)
+            PrimaryButton(title: "Check Verification", isEnabled: !authentication.isBusy) {
+                Task { await authentication.refreshVerification() }
+            }
+            Button("Resend verification email") {
+                Task { await authentication.resendVerification() }
+            }.frame(minHeight: 44)
+        } else {
+            Text("Identity verified. Agreement and profile persistence are the next implementation checkpoint. Account Setup is not complete yet.")
+                .font(.footnote)
+        }
+        Button("Sign Out") { Task { await authentication.signOut() } }
+            .frame(minHeight: 44)
+    }
+
+    private func finishApple(_ result: Result<ASAuthorization, Error>) {
+        isAppleAuthorizing = false
+        let nonce = appleNonce
+        appleNonce = nil
+        switch result {
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let nonce else {
+                providerError = "Apple sign-in could not be verified. Please try again."
+                return
+            }
+            Task {
+                await authentication.authenticateProvider {
+                    try await providerClient.signInWithApple(credential, nonce: nonce.raw)
+                }
+            }
+        case .failure(let error):
+            if (error as? ASAuthorizationError)?.code != .canceled {
+                providerError = "Apple sign-in did not finish. Check Sign in with Apple capability and provider configuration, then retry."
+            }
+        }
     }
 
     private var modeBinding: Binding<EmailAccountMode> {
@@ -147,8 +226,10 @@ struct EmailAccountFormView: View {
         else if form.errors[.password] != nil { focusedField = .password }
         else {
             focusedField = nil
+            let submitted = form
             form.password = ""
-            showServiceNotice = true
+            hasSubmitted = false
+            Task { await authentication.submit(submitted) }
         }
     }
 

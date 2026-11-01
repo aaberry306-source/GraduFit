@@ -6,6 +6,7 @@ final class WelcomeScreenTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-no-auth"]
         app.launch()
     }
 
@@ -38,7 +39,7 @@ final class WelcomeScreenTests: XCTestCase {
 
     func testAccessibilityTextSizeKeepsContinueReachable() {
         app.terminate()
-        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launchArguments = ["--ui-testing-no-auth", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
         let account = app.buttons["onboarding.account"]
         scrollTo(account)

@@ -3,11 +3,19 @@ import SwiftUI
 /// No local action can authenticate or complete setup without the live backend.
 struct OnboardingRootView: View {
     @State private var isAccountExpanded = false
+    private let providerClient: FirebaseAuthenticationClient
+    @StateObject private var authentication: AuthenticationCoordinator
     @State private var accountForm = EmailAccountForm()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .title) private var minimumHeaderHeight: CGFloat = 240
 
     private let progress = OnboardingProgress()
+
+    init() {
+        let client = FirebaseAuthenticationClient()
+        providerClient = client
+        _authentication = StateObject(wrappedValue: AuthenticationCoordinator(client: client))
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -37,7 +45,7 @@ struct OnboardingRootView: View {
                                 isComplete: progress.accountSetupComplete, isAvailable: true,
                                 accessibilityID: "onboarding.account", action: toggleAccount
                             ) {
-                                EmailAccountFormView(form: $accountForm)
+                                EmailAccountFormView(form: $accountForm, authentication: authentication, providerClient: providerClient)
                             }
 
                             OnboardingStepCard(
@@ -86,6 +94,10 @@ struct OnboardingRootView: View {
             .scrollIndicators(.hidden)
         }
         .preferredColorScheme(.light)
+        .task {
+            await authentication.restore()
+            if authentication.account != nil { isAccountExpanded = true }
+        }
     }
 
     private func toggleAccount() {
